@@ -1,0 +1,47 @@
+---
+- name: Enrichment - collect service status + recent logs (generic)
+  hosts: all
+  gather_facts: false
+  become: true
+
+  vars:
+    service_name: "httpd"
+    log_lines: 80
+    enrichment_dir: "/tmp/aiops_enrichment"
+
+  tasks:
+    - name: Ensure enrichment directory exists
+      ansible.builtin.file:
+        path: "{{ enrichment_dir }}"
+        state: directory
+        mode: "0755"
+
+    - name: Collect systemd status
+      ansible.builtin.command: "systemctl status {{ service_name }} --no-pager"
+      register: svc_status
+      changed_when: false
+      failed_when: false
+
+    - name: Collect journal logs
+      ansible.builtin.command: "journalctl -u {{ service_name }} -n {{ log_lines }} --no-pager"
+      register: journal_logs
+      changed_when: false
+      failed_when: false
+
+    - name: Write incident context bundle
+      ansible.builtin.copy:
+        dest: "{{ enrichment_dir }}/incident_context.txt"
+        mode: "0644"
+        content: |
+          SERVICE={{ service_name }}
+          HOST={{ inventory_hostname }}
+
+          ## systemctl status
+          {{ svc_status.stdout | default('') }}
+
+          ## journalctl logs (last {{ log_lines }})
+          {{ journal_logs.stdout | default('') }}
+
+    - name: Print enrichment output location
+      ansible.builtin.debug:
+        msg: "Incident context written to {{ enrichment_dir }}/incident_context.txt"

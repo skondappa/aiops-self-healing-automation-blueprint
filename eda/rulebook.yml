@@ -1,0 +1,16 @@
+---
+- name: aiops_self_healing_rulebook
+  hosts: localhost
+
+  sources:
+    - name: demo_event_source
+      ansible.eda.file:
+        path: "./eda/webhook_example_event.json"
+        interval: 5
+
+  rules:
+    - name: httpd_down_triggers_enrichment
+      condition: event.service == "httpd" and event.state == "down"
+      actions:
+        - debug:
+            msg: "Detected {{ event.service }} is {{ event.state }} on {{ event.host }}. Trigger enrichment."

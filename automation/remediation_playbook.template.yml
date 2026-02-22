@@ -1,0 +1,29 @@
+---
+- name: Remediate service issue (template)
+  hosts: all
+  gather_facts: false
+  become: true
+
+  vars:
+    service_name: "httpd"
+    config_path: "/etc/httpd/conf/httpd.conf"
+    bad_directive_regex: "^InvalidDirectiveHere"
+
+  tasks:
+    - name: Remove known bad directive line
+      ansible.builtin.lineinfile:
+        path: "{{ config_path }}"
+        regexp: "{{ bad_directive_regex }}"
+        state: absent
+      register: config_fix
+
+    - name: Restart service if config changed
+      ansible.builtin.service:
+        name: "{{ service_name }}"
+        state: restarted
+      when: config_fix is changed
+
+    - name: Ensure service is started
+      ansible.builtin.service:
+        name: "{{ service_name }}"
+        state: started

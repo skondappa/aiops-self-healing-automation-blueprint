@@ -1,0 +1,24 @@
+---
+- name: Verification - confirm service health
+  hosts: all
+  gather_facts: false
+  become: true
+
+  vars:
+    service_name: "httpd"
+
+  tasks:
+    - name: Check systemd is-active
+      ansible.builtin.command: "systemctl is-active {{ service_name }}"
+      register: active_status
+      changed_when: false
+      failed_when: false
+
+    - name: Fail if service not active
+      ansible.builtin.fail:
+        msg: "Service {{ service_name }} is NOT active. Status={{ active_status.stdout }}"
+      when: active_status.stdout != "active"
+
+    - name: Success message
+      ansible.builtin.debug:
+        msg: "Service {{ service_name }} is active ✅"
